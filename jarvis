@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. AI</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom scrollbar for a more modern look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        
+        /* Basic styling for rendered markdown */
+        .prose {
+            color: inherit;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+            color: inherit;
+        }
+        .prose a {
+            color: #60a5fa; /* blue-400 */
+        }
+        .prose strong {
+            color: inherit;
+        }
+        .prose code {
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .prose pre {
+            background-color: #0f172a; /* slate-900 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #334155; /* slate-700 */
+        }
+        .prose pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        .prose ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+        }
+        .prose ol {
+            list-style-type: decimal;
+            padding-left: 1.5rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-gray-200 font-sans antialiased">
+
+    <div id="app" class="flex flex-col h-screen max-w-4xl mx-auto p-2 sm:p-4">
+        <!-- Header -->
+        <header class="text-center py-4">
+            <h1 class="text-3xl sm:text-4xl font-bold text-cyan-400" style="text-shadow: 0 0 10px #22d3ee, 0 0 20px #22d3ee;">
+                J.A.R.V.I.S. AI
+            </h1>
+            <p class="text-slate-400 text-sm">Your Personal AI Assistant</p>
+        </header>
+
+        <!-- Chat Messages Container -->
+        <main id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-6 rounded-lg border border-slate-700 bg-slate-800/50">
+            <!-- Initial AI Welcome Message -->
+            <div class="flex items-start gap-3 justify-start">
+                <div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0 text-slate-900 font-bold text-sm" style="box-shadow: 0 0 8px #22d3ee;">AI</div>
+                <div class="bg-slate-700 rounded-xl p-4 max-w-lg shadow-lg">
+                    <p>Good day. I am J.A.R.V.I.S., an AI assistant ready to help. How may I be of service?</p>
+                </div>
+            </div>
+            <!-- Dynamic messages will be appended here -->
+        </main>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="hidden flex items-center gap-2 self-start px-4 py-2">
+            <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+            <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse [animation-delay:-0.15s]"></div>
+            <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+        </div>
+
+        <!-- Input Form -->
+        <footer class="py-4">
+            <form id="chat-form" class="flex items-center gap-3 bg-slate-800 rounded-full p-2 border border-slate-700 focus-within:ring-2 focus-within:ring-cyan-500 transition-shadow duration-300">
+                <textarea 
+                    id="user-input" 
+                    rows="1" 
+                    placeholder="Ask me anything..." 
+                    class="flex-1 bg-transparent text-gray-200 px-4 py-2 resize-none focus:outline-none placeholder-slate-500"></textarea>
+                <button type="submit" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-full p-3 transition-colors duration-300 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        
+        // --- Gemini API Configuration ---
+        // Leave apiKey as an empty string. The environment will provide it.
+        const apiKey = ""; 
+        const model = 'gemini-2.5-flash-preview-09-2025';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        let chatHistory = []; // To store conversation history if needed for more complex logic later
+
+        // --- Event Listeners ---
+
+        chatForm.addEventListener('submit', handleFormSubmit);
+        userInput.addEventListener('keydown', handleTextareaKeydown);
+        userInput.addEventListener('input', autoResizeTextarea);
+
+
+        // --- Functions ---
+
+        function autoResizeTextarea() {
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+
+            // Display user's message
+            displayMessage(userMessage, 'user');
+            
+            // Add to history and clear input
+            chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+            userInput.value = '';
+            autoResizeTextarea();
+
+            // Show loading indicator
+            loadingIndicator.classList.remove('hidden');
+            
+            await callGeminiAPI(userMessage);
+        }
+        
+        function handleTextareaKeydown(e) {
+             if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        }
+        
+        /**
+         * Sends a request to the Gemini API with exponential backoff for retries.
+         * @param {string} userMessage - The message from the user.
+         */
+        async function callGeminiAPI(userMessage) {
+            const payload = {
+                // For simplicity, we send only the latest user message.
+                // For a stateful chat, you would build 'contents' from chatHistory.
+                contents: [{ parts: [{ text: userMessage }] }],
+                // Enable Google Search for grounded, up-to-date responses
+                tools: [{ "google_search": {} }],
+            };
+
+            let attempts = 0;
+            const maxAttempts = 5;
+            let delay = 1000; // 1 second
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorBody}`);
+                    }
+                    
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const aiText = candidate.content.parts[0].text;
+                        const groundingMetadata = candidate.groundingMetadata;
+                        let sources = [];
+
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            sources = groundingMetadata.groundingAttributions
+                                .map(attr => attr.web)
+                                .filter(web => web?.uri && web?.title);
+                        }
+
+                        displayMessage(aiText, 'ai', sources);
+                        return; // Success, exit the loop
+                    } else {
+                         throw new Error("Invalid response structure from API.");
+                    }
+
+                } catch (error) {
+                    attempts++;
+                    console.error(`Attempt ${attempts} failed:`, error);
+                    if (attempts >= maxAttempts) {
+                        displayMessage(`I'm sorry, I'm having trouble connecting to my systems. Please try again later. Error: ${error.message}`, 'ai');
+                        break; // Exit loop after max attempts
+                    }
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                }
+            }
+             loadingIndicator.classList.add('hidden');
+        }
+
+        /**
+         * Displays a message in the chat container.
+         * @param {string} message - The message content.
+         * @param {string} sender - 'user' or 'ai'.
+         * @param {Array} [sources=[]] - Array of source objects for AI messages.
+         */
+        function displayMessage(message, sender, sources = []) {
+            loadingIndicator.classList.add('hidden');
+
+            const messageWrapper = document.createElement('div');
+            const iconDiv = document.createElement('div');
+            const messageDiv = document.createElement('div');
+
+            messageWrapper.classList.add('flex', 'items-start', 'gap-3');
+            iconDiv.classList.add('w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'flex-shrink-0', 'font-bold', 'text-sm');
+            messageDiv.classList.add('p-4', 'rounded-xl', 'shadow-lg');
+
+            if (sender === 'user') {
+                messageWrapper.classList.add('justify-end');
+                iconDiv.classList.add('bg-blue-600', 'text-white');
+                iconDiv.textContent = 'You';
+                messageDiv.classList.add('bg-blue-600');
+                messageDiv.textContent = message; // User message is plain text
+                messageWrapper.appendChild(messageDiv);
+                messageWrapper.appendChild(iconDiv);
+            } else { // AI
+                messageWrapper.classList.add('justify-start');
+                iconDiv.classList.add('bg-cyan-500', 'text-slate-900');
+                iconDiv.style.boxShadow = '0 0 8px #22d3ee';
+                iconDiv.textContent = 'AI';
+                messageDiv.classList.add('bg-slate-700', 'prose', 'prose-sm', 'max-w-full');
+                // Use marked to render Markdown from the AI
+                messageDiv.innerHTML = marked.parse(message);
+                
+                // Handle sources if they exist
+                if (sources.length > 0) {
+                    const sourcesContainer = document.createElement('div');
+                    sourcesContainer.className = 'mt-4 border-t border-slate-600 pt-3';
+                    const sourcesTitle = document.createElement('h4');
+                    sourcesTitle.className = 'text-xs font-semibold text-slate-400 mb-2';
+                    sourcesTitle.textContent = 'Sources:';
+                    sourcesContainer.appendChild(sourcesTitle);
+                    
+                    const sourcesList = document.createElement('ul');
+                    sourcesList.className = 'text-xs space-y-1';
+                    sources.forEach((source, index) => {
+                       const listItem = document.createElement('li');
+                       const link = document.createElement('a');
+                       link.href = source.uri;
+                       link.textContent = `${index + 1}. ${source.title}`;
+                       link.target = '_blank';
+                       link.rel = 'noopener noreferrer';
+                       link.className = 'text-cyan-400 hover:underline truncate block';
+                       listItem.appendChild(link);
+                       sourcesList.appendChild(listItem);
+                    });
+                    sourcesContainer.appendChild(sourcesList);
+                    messageDiv.appendChild(sourcesContainer);
+                }
+
+                messageWrapper.appendChild(iconDiv);
+                messageWrapper.appendChild(messageDiv);
+            }
+
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
+        }
+
+    </script>
+</body>
+</html>
